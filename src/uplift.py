@@ -35,3 +35,42 @@ class TLearner:
 
     def predict_uplift(self, X: pd.DataFrame) -> np.ndarray:
         return self.model_t.predict_proba(X)[:, 1] - self.model_c.predict_proba(X)[:, 1]
+
+
+def uplift_by_decile(uplift_pred, y, treated, n_bins: int = 10) -> pd.DataFrame:
+    """Sort customers by predicted uplift (highest first), cut into bins, and compare the
+    ACTUAL visit rate of emailed vs. control customers inside each bin."""
+    d = pd.DataFrame({"pred": np.asarray(uplift_pred), "y": np.asarray(y), "t": np.asarray(treated).astype(int)})
+    d["bin"] = pd.qcut(d["pred"].rank(method="first", ascending=False), n_bins, labels=range(1, n_bins + 1))
+    g = d.groupby("bin", observed=True).agg(customers=("y", "size"), predicted_uplift=("pred", "mean"))
+    rates = d.pivot_table(index="bin", columns="t", values="y", aggfunc="mean", observed=True)
+    g["rate_email"], g["rate_control"] = rates[1], rates[0]
+    g["actual_uplift"] = g["rate_email"] - g["rate_control"]
+    return g
+
+
+def qini_curve(uplift_pred, y, treated) -> pd.DataFrame:
+    """Qini curve: target customers from highest to lowest predicted uplift and track the
+    extra visits gained versus control, scaled to the treated count."""
+    d = pd.DataFrame({"pred": np.asarray(uplift_pred), "y": np.asarray(y), "t": np.asarray(treated).astype(int)})
+    d = d.sort_values("pred", ascending=False).reset_index(drop=True)
+    n_t, n_c = d["t"].cumsum(), (1 - d["t"]).cumsum()
+    y_t, y_c = (d["y"] * d["t"]).cumsum(), (d["y"] * (1 - d["t"])).cumsum()
+    gain = y_t - y_c * (n_t / n_c.replace(0, np.nan)).fillna(0)
+    out = pd.DataFrame({"share_targeted": (np.arange(len(d)) + 1) / len(d), "incremental_visits": gain})
+    return pd.concat([pd.DataFrame({"share_targeted": [0.0], "incremental_visits": [0.0]}), out], ignore_index=True)
+
+
+def qini_coefficient(curve: pd.DataFrame) -> float:
+    """Area between the model's Qini curve and the random-targeting line (higher = better)."""
+    x, yv = curve["share_targeted"].to_numpy(), curve["incremental_visits"].to_numpy()
+    random_line = x * yv[-1]
+    area = getattr(np, "trapezoid", None) or np.trapz      # name differs by numpy version
+    return float(area(yv - random_line, x))
+
+
+def share_of_gain_at(curve: pd.DataFrame, share: float) -> float:
+    """Share of all incremental visits captured by emailing only the top `share` of customers."""
+    total = curve["incremental_visits"].iloc[-1]
+    at = curve.loc[curve["share_targeted"] <= share, "incremental_visits"].iloc[-1]
+    return float(at / total) if total else float("nan")
