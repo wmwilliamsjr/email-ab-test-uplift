@@ -11,7 +11,7 @@
 | Mens E-Mail | 18.28% vs. 10.62% | +7.66 pts | +7.00 to +8.32 | < 0.0001 |
 | Womens E-Mail | 15.14% vs. 10.62% | +4.52 pts | +3.89 to +5.16 | < 0.0001 |
 
-1. **Both emails work, and the experiment is trustworthy.** Groups are almost exactly one-third each (SRM p = 0.90), customer features are balanced, and both lifts stay significant after correcting for four tests. Conversions rise too.
+1. **Both emails work, and the experiment is trustworthy.** Groups are almost exactly one-third each (SRM p = 0.90), customer features are balanced, and both lifts stay significant after correcting for four tests. Conversions rise too, and extra spend per customer was $0.77 for the men's email (95% interval $0.48 to $1.05) and $0.42 for the women's ($0.15 to $0.69).
 2. **What drives visits:** XGBoost and logistic regression tied (test ROC AUC 0.648 each; decision tree 0.618), so the simpler, explainable model is preferred. New customers have 42% lower visit odds; the men's email multiplies visit odds by 1.89 and the women's by 1.51. Customer history accounts for about half of XGBoost's gain: who the customer already is matters as much as the email.
 3. **The men's email helps nearly everyone:**
 
@@ -25,6 +25,7 @@
 5. **Recommendation:** send the men's email to all customers and retire the women's email. An email pays for itself only above 2 points of uplift ($0.01 cost, $0.50 per visit, both assumptions); the women's email falls below that for men's-only buyers (+1.1).
 
 ![Visit rate by group](reports/figures/01_visit_rate_by_group.png)
+![Conversion rate by group](reports/figures/01_conversion_rate_by_group.png)
 ![Visit drivers](reports/figures/02_visit_drivers.png)
 ![Qini curve: women's email](reports/figures/03_qini_womens.png)
 ![Qini curve: men's email](reports/figures/03_qini_mens.png)
